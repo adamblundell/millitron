@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Millitron Quality - Email Entry</title>
+<style>
+body { font-family: sans-serif; margin:0; padding:20px; background:#f5f5f5; }
+h1,h2 { text-align:center; }
+input, button { font-size:18px; padding:10px; margin:5px; width:90%; max-width:300px; box-sizing:border-box; }
+button { cursor:pointer; }
+.center { display:flex; justify-content:center; align-items:center; flex-direction:column; }
+.row { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:10px 0; }
+.photos { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px 0; }
+.photos img { max-width:120px; cursor:pointer; border:1px solid #ccc; }
+.list-entry { display:flex; flex-direction:column; align-items:center; margin-bottom:15px; width:100%; max-width:300px; }
+.hidden { display:none; }
+.small-muted { font-size:12px; color:#666; text-align:center; margin-top:6px; }
+</style>
+</head>
+<body>
+
+<!-- Login Page -->
+<div id="loginPage" class="center">
+  <h1>Millitron Quality</h1>
+  <input type="text" id="loginUser" placeholder="Username">
+  <input type="password" id="loginPass" placeholder="Password">
+  <div class="row">
+    <button id="loginBtn">Login</button>
+  </div>
+</div>
+
+<!-- Add Entry Page -->
+<div id="addEntryPage" class="center hidden">
+  <h2>Add Production Entry</h2>
+  <div class="list-entry"><label>Production Order:</label><input type="text" id="prodOrder"></div>
+  <div class="list-entry"><label>DR Number:</label><input type="text" id="drNumber"></div>
+  <div class="list-entry">
+    <label>Photos (3+):</label>
+    <input type="file" id="photo1" accept="image/*">
+    <input type="file" id="photo2" accept="image/*">
+    <input type="file" id="photo3" accept="image/*">
+    <div class="photos" id="photoPreview"></div>
+    <div class="small-muted">Tip: after selecting each photo, wait a moment for preview.</div>
+  </div>
+  <div class="row">
+    <button id="sendEmailBtn">Send Entry via Email</button>
+    <button id="logoutBtn">Logout</button>
+  </div>
+</div>
+
+<script>
+/* ---------- USERS ---------- */
+let users = [
+  {username:"Admin", password:"AB4826"},
+  {username:"Dave", password:"Quality"}
+];
+
+/* ---------- NAV & AUTH ---------- */
+function login(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const found = users.find(x => x.username === u && x.password === p);
+  if(found){
+    localStorage.setItem('currentUser', u);
+    showAddEntry();
+  } else {
+    alert('Invalid credentials.');
+  }
+}
+
+function hideAll(){ ['loginPage','addEntryPage'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+function showAddEntry(){ hideAll(); document.getElementById('addEntryPage').classList.remove('hidden'); }
+
+/* ---------- PHOTO HANDLING ---------- */
+const photoInputs = ['photo1','photo2','photo3'];
+let photoFiles = [];
+
+photoInputs.forEach(id => {
+  document.getElementById(id).addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    photoFiles.push(file);
+    const previewUrl = URL.createObjectURL(file);
+    const img = document.createElement('img');
+    img.src = previewUrl;
+    img.addEventListener('click', ()=> window.open(previewUrl));
+    document.getElementById('photoPreview').appendChild(img);
+  });
+});
+
+/* ---------- SEND EMAIL ---------- */
+function sendEmail() {
+  const prodOrder = document.getElementById('prodOrder').value.trim();
+  const drNumber = document.getElementById('drNumber').value.trim();
+  if(!prodOrder || !drNumber) return alert('Fill all fields');
+  if(photoFiles.length < 3) return alert('Select at least 3 photos');
+
+  // Construct email body
+  let body = `Production Order: ${prodOrder}%0D%0ADR Number: ${drNumber}%0D%0AUser: ${localStorage.getItem('currentUser') || 'Unknown'}%0D%0APhotos attached manually after opening.`;
+  let subject = `Production Entry: ${prodOrder}`;
+
+  // Open default email client
+  window.location.href = `mailto:recipient@example.com?subject=${subject}&body=${body}`;
+}
+
+/* ---------- BUTTONS ---------- */
+document.getElementById('loginBtn').addEventListener('click', login);
+document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  localStorage.removeItem('currentUser');
+  hideAll();
+  document.getElementById('loginPage').classList.remove('hidden');
+  document.getElementById('prodOrder').value='';
+  document.getElementById('drNumber').value='';
+  photoFiles = [];
+  document.getElementById('photoPreview').innerHTML='';
+});
+
+/* ---------- INIT ---------- */
+hideAll();
+document.getElementById('loginPage').classList.remove('hidden');
+</script>
+</body>
+</html>
