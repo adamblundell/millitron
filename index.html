@@ -17,12 +17,16 @@ button { cursor:pointer; }
 .hidden { display:none; }
 .small-muted { font-size:12px; color:#666; text-align:center; margin-top:6px; }
 </style>
+<script type="text/javascript" src="https://cdn.emailjs.com/dist/email.min.js"></script>
+<script type="text/javascript">
+   (function(){ emailjs.init('GM8geKKfTUv87uZu3'); })();
+</script>
 </head>
 <body>
 
 <!-- Login Page -->
 <div id="loginPage" class="center">
-  <h1>Millitron Quality LOGON V1</h1>
+  <h1>Millitron Quality</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
@@ -69,11 +73,11 @@ button { cursor:pointer; }
 <script>
 /* ---------- USERS ---------- */
 let users = JSON.parse(localStorage.getItem('users')) || [
-  {username:"Admin", password:"ab4826"},
-  {username:"Dave", password:"quality"},
-  {username:"Gordon", password:"gordon"},
-  {username:"Rob", password:"rob"},
-  {username:"Que", password:"que"}
+  {username:"Admin", password:"AB4826"},
+  {username:"Dave", password:"Quality"},
+  {username:"John", password:"Password123"},
+  {username:"Jane", password:"SecurePass"},
+  {username:"Alex", password:"Alex2025"}
 ];
 
 function saveUsers() { localStorage.setItem('users', JSON.stringify(users)); }
@@ -169,9 +173,36 @@ function sendEmail() {
   if(!prodOrder || !drNumber) return alert('Fill all fields');
   if(photoFiles.length < 3) return alert('Select at least 3 photos');
 
-  let body = `Production Order: ${prodOrder}%0D%0ADR Number: ${drNumber}%0D%0AUser: ${localStorage.getItem('currentUser') || 'Unknown'}%0D%0APhotos attached manually after opening.`;
-  let subject = `Production Entry: ${prodOrder}`;
-  window.location.href = `mailto:adam.blundell@milliken.com?subject=${subject}&body=${body}`;
+  const currentUser = localStorage.getItem('currentUser') || 'Unknown';
+
+  // Convert photos to base64
+  const attachmentsPromises = photoFiles.map(file => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({name: file.name, data: reader.result.split(',')[1]});
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  });
+
+  Promise.all(attachmentsPromises).then(attachments => {
+    const templateParams = {
+      subject: `Production Entry: ${prodOrder}`,
+      prodOrder: prodOrder,
+      drNumber: drNumber,
+      user: currentUser,
+      attachments: attachments
+    };
+
+    emailjs.send('service_l486r2y','template_ttnq0nu', templateParams)
+      .then(response => { alert('Email sent successfully!'); 
+        // clear fields
+        document.getElementById('prodOrder').value='';
+        document.getElementById('drNumber').value='';
+        photoFiles = [];
+        document.getElementById('photoPreview').innerHTML='';
+      }, error => { alert('Failed to send email: '+error); });
+  });
 }
 
 /* ---------- BUTTONS ---------- */
