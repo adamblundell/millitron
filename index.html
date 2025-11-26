@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Millitron Production Entry</title>
+<title>Millitron Quality - Email Entry</title>
 <style>
 body { font-family: sans-serif; margin:0; padding:20px; background:#f5f5f5; }
 h1,h2 { text-align:center; }
@@ -13,17 +13,16 @@ button { cursor:pointer; }
 .row { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:10px 0; }
 .photos { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px 0; }
 .photos img { max-width:120px; cursor:pointer; border:1px solid #ccc; }
-.small-muted { font-size:12px; color:#666; text-align:center; margin-top:6px; }
+.list-entry { display:flex; flex-direction:column; align-items:center; margin-bottom:15px; width:100%; max-width:300px; }
 .hidden { display:none; }
-#overlay { position:fixed; display:none; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999; }
-#overlay img { max-width:90%; max-height:90%; }
+.small-muted { font-size:12px; color:#666; text-align:center; margin-top:6px; }
 </style>
 </head>
 <body>
 
-<!-- Login -->
+<!-- Login Page -->
 <div id="loginPage" class="center">
-  <h1>Millitron Production Entry v1</h1>
+  <h1>Millitron Quality</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
@@ -31,140 +30,96 @@ button { cursor:pointer; }
   </div>
 </div>
 
-<!-- Add Entry -->
+<!-- Add Entry Page -->
 <div id="addEntryPage" class="center hidden">
   <h2>Add Production Entry</h2>
-  <div class="row">
-    <div>
-      <label>Production Order:</label>
-      <input type="text" id="prodOrder">
-    </div>
-    <div>
-      <label>DR Number:</label>
-      <input type="text" id="drNumber">
-    </div>
-  </div>
-  <div class="row">
-    <label>Photos (3+ required):</label>
+  <div class="list-entry"><label>Production Order:</label><input type="text" id="prodOrder"></div>
+  <div class="list-entry"><label>DR Number:</label><input type="text" id="drNumber"></div>
+  <div class="list-entry">
+    <label>Photos (3+):</label>
     <input type="file" id="photo1" accept="image/*">
     <input type="file" id="photo2" accept="image/*">
     <input type="file" id="photo3" accept="image/*">
+    <div class="photos" id="photoPreview"></div>
+    <div class="small-muted">Tip: after selecting each photo, wait a moment for preview.</div>
   </div>
-  <div class="photos" id="photoPreview"></div>
-  <div class="small-muted">Tip: after taking each photo allow the upload to finish before the next.</div>
   <div class="row">
-    <button id="sendEmailBtn">Save Entry</button>
+    <button id="sendEmailBtn">Send Entry via Email</button>
     <button id="logoutBtn">Logout</button>
   </div>
 </div>
 
-<!-- Overlay -->
-<div id="overlay" onclick="this.style.display='none'">
-  <img id="overlayImg" src="">
-</div>
-
-<!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const supabaseUrl = 'https://gkqtfxwpyfekiavszxkr.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrcXRmeHdweWZla2lhdnN6eGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwODYzNDIsImV4cCI6MjA3OTY2MjM0Mn0.ntlEFLcjB4oFLwHlm-c36j4osLhW5u9zgmapXnTR_ow';
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-
-/* ------------------------------
-USERS
--------------------------------*/
+/* ---------- USERS ---------- */
 let users = [
   {username:"Admin", password:"AB4826"},
   {username:"Dave", password:"Quality"}
 ];
 
-/* ------------------------------
-LOGIN
--------------------------------*/
+/* ---------- NAV & AUTH ---------- */
 function login(){
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
-  const found = users.find(x => x.username===u && x.password===p);
+  const found = users.find(x => x.username === u && x.password === p);
   if(found){
     localStorage.setItem('currentUser', u);
-    document.getElementById('loginPage').classList.add('hidden');
-    document.getElementById('addEntryPage').classList.remove('hidden');
-  } else { alert('Invalid credentials'); }
+    showAddEntry();
+  } else {
+    alert('Invalid credentials.');
+  }
 }
 
-document.getElementById('loginBtn').addEventListener('click', login);
+function hideAll(){ ['loginPage','addEntryPage'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+function showAddEntry(){ hideAll(); document.getElementById('addEntryPage').classList.remove('hidden'); }
 
-/* ------------------------------
-PHOTO PREVIEW
--------------------------------*/
+/* ---------- PHOTO HANDLING ---------- */
 const photoInputs = ['photo1','photo2','photo3'];
-let currentPhotos = [];
+let photoFiles = [];
 
-photoInputs.forEach(id=>{
-  document.getElementById(id).addEventListener('change', (e)=>{
+photoInputs.forEach(id => {
+  document.getElementById(id).addEventListener('change', e => {
     const file = e.target.files[0];
     if(!file) return;
-    currentPhotos.push(file);
-    const url = URL.createObjectURL(file);
+    photoFiles.push(file);
+    const previewUrl = URL.createObjectURL(file);
     const img = document.createElement('img');
-    img.src = url;
-    img.addEventListener('click', ()=>{ document.getElementById('overlayImg').src = url; document.getElementById('overlay').style.display='flex'; });
+    img.src = previewUrl;
+    img.addEventListener('click', ()=> window.open(previewUrl));
     document.getElementById('photoPreview').appendChild(img);
   });
 });
 
-/* ------------------------------
-SAVE ENTRY TO SUPABASE
--------------------------------*/
-async function sendEntry(){
+/* ---------- SEND EMAIL ---------- */
+function sendEmail() {
   const prodOrder = document.getElementById('prodOrder').value.trim();
   const drNumber = document.getElementById('drNumber').value.trim();
-  const user = localStorage.getItem('currentUser') || 'Unknown';
+  if(!prodOrder || !drNumber) return alert('Fill all fields');
+  if(photoFiles.length < 3) return alert('Select at least 3 photos');
 
-  if(!prodOrder || !drNumber){ alert('Fill all fields'); return; }
-  if(currentPhotos.length < 3){ alert('Attach at least 3 photos'); return; }
+  // Construct email body
+  let body = `Production Order: ${prodOrder}%0D%0ADR Number: ${drNumber}%0D%0AUser: ${localStorage.getItem('currentUser') || 'Unknown'}%0D%0APhotos attached manually after opening.`;
+  let subject = `Production Entry: ${prodOrder}`;
 
-  const photosBase64 = await Promise.all(currentPhotos.map(file=>{
-    return new Promise(resolve=>{
-      const reader = new FileReader();
-      reader.onload = ()=> resolve({ name:file.name, data:reader.result });
-      reader.readAsDataURL(file);
-    });
-  }));
-
-  const { data, error } = await supabase
-    .from('records')
-    .insert([{
-      prodOrder,
-      drNumber,
-      user,
-      photos: photosBase64,
-      created_at: new Date()
-    }]);
-
-  if(error){
-    console.error(error);
-    alert('Failed to save entry');
-  } else {
-    alert('Entry saved! Email will be sent automatically.');
-    document.getElementById('prodOrder').value='';
-    document.getElementById('drNumber').value='';
-    currentPhotos=[];
-    document.getElementById('photoPreview').innerHTML='';
-  }
+  // Open default email client
+  window.location.href = `mailto:recipient@example.com?subject=${subject}&body=${body}`;
 }
 
-document.getElementById('sendEmailBtn').addEventListener('click', sendEntry);
-
-/* ------------------------------
-LOGOUT
--------------------------------*/
+/* ---------- BUTTONS ---------- */
+document.getElementById('loginBtn').addEventListener('click', login);
+document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   localStorage.removeItem('currentUser');
-  document.getElementById('addEntryPage').classList.add('hidden');
+  hideAll();
   document.getElementById('loginPage').classList.remove('hidden');
+  document.getElementById('prodOrder').value='';
+  document.getElementById('drNumber').value='';
+  photoFiles = [];
+  document.getElementById('photoPreview').innerHTML='';
 });
+
+/* ---------- INIT ---------- */
+hideAll();
+document.getElementById('loginPage').classList.remove('hidden');
 </script>
 </body>
 </html>
-
