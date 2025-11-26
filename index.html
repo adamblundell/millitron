@@ -22,7 +22,7 @@ button { cursor:pointer; }
 
 <!-- Login Page -->
 <div id="loginPage" class="center">
-  <h1>Millitron Quality</h1>
+  <h1>Millitron Quality supabase record</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
@@ -44,12 +44,18 @@ button { cursor:pointer; }
     <div class="small-muted">Tip: after selecting each photo, wait a moment for preview.</div>
   </div>
   <div class="row">
-    <button id="sendEmailBtn">Send Entry via Email</button>
+    <button id="sendEmailBtn">Save Entry</button>
     <button id="logoutBtn">Logout</button>
   </div>
 </div>
 
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const supabaseUrl = 'https://gkqtfxwpyfekiavszxkr.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrcXRmeHdweWZla2lhdnN6eGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwODYzNDIsImV4cCI6MjA3OTY2MjM0Mn0.ntlEFLcjB4oFLwHlm-c36j4osLhW5u9zgmapXnTR_ow';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
 /* ---------- USERS ---------- */
 let users = [
   {username:"Admin", password:"AB4826"},
@@ -89,24 +95,43 @@ photoInputs.forEach(id => {
   });
 });
 
-/* ---------- SEND EMAIL ---------- */
-function sendEmail() {
+/* ---------- SAVE ENTRY TO SUPABASE ---------- */
+async function sendEntry() {
   const prodOrder = document.getElementById('prodOrder').value.trim();
   const drNumber = document.getElementById('drNumber').value.trim();
   if(!prodOrder || !drNumber) return alert('Fill all fields');
   if(photoFiles.length < 3) return alert('Select at least 3 photos');
 
-  // Construct email body
-  let body = `Production Order: ${prodOrder}%0D%0ADR Number: ${drNumber}%0D%0AUser: ${localStorage.getItem('currentUser') || 'Unknown'}%0D%0APhotos attached manually after opening.`;
-  let subject = `Production Entry: ${prodOrder}`;
+  // Convert photos to base64
+  const photosBase64 = await Promise.all(photoFiles.map(file => {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({name: file.name, data: reader.result});
+      reader.readAsDataURL(file);
+    });
+  }));
 
-  // Open default email client
-  window.location.href = `mailto:recipient@example.com?subject=${subject}&body=${body}`;
+  const user = localStorage.getItem('currentUser') || 'Unknown';
+
+  const { data, error } = await supabase
+    .from('records')
+    .insert([{ prodOrder, drNumber, user, photos: photosBase64, created_at: new Date() }]);
+
+  if(error){
+    console.error(error);
+    alert('Failed to save entry');
+  } else {
+    alert('Entry saved successfully!');
+    document.getElementById('prodOrder').value='';
+    document.getElementById('drNumber').value='';
+    photoFiles = [];
+    document.getElementById('photoPreview').innerHTML='';
+  }
 }
 
 /* ---------- BUTTONS ---------- */
 document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
+document.getElementById('sendEmailBtn').addEventListener('click', sendEntry);
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   localStorage.removeItem('currentUser');
   hideAll();
