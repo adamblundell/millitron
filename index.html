@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Millitron Quality - Stable (Supabase)</title>
+<title>Millitron Quality - Supabase Version</title>
 <style>
 body { font-family: sans-serif; margin:0; padding:20px; background:#f5f5f5; }
 h1,h2 { text-align:center; }
@@ -15,13 +15,8 @@ button { cursor:pointer; }
 .photos img { max-width:120px; cursor:pointer; border:1px solid #ccc; }
 .list-entry { display:flex; flex-direction:column; align-items:center; margin-bottom:15px; width:100%; max-width:300px; }
 .hidden { display:none; }
+.load-more { display:block; margin:10px auto; padding:8px 12px; }
 .small-muted { font-size:12px; color:#666; text-align:center; margin-top:6px; }
-#overlay { position:fixed; display:none; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999; }
-#overlay img { max-width:90%; max-height:90%; }
-@media (max-width:600px){
-  input, button { font-size:16px; padding:8px; }
-  .photos img { max-width:90px; }
-}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -29,22 +24,12 @@ button { cursor:pointer; }
 
 <!-- Login -->
 <div id="loginPage" class="center">
-  <h1>Millitron Quality (Stable) v1</h1>
+  <h1>Millitron Quality</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
     <button id="loginBtn">Login</button>
   </div>
-</div>
-
-<!-- Homepage -->
-<div id="homePage" class="center hidden">
-  <h1>Millitron Quality Homepage</h1>
-  <div class="row">
-    <button id="addEntryBtn">Add Production Entry</button>
-  </div>
-  <div>Logged in as: <span id="currentUserDisplay"></span></div>
-  <button id="logoutBtn">Logout</button>
 </div>
 
 <!-- Add Entry -->
@@ -58,7 +43,7 @@ button { cursor:pointer; }
     <input type="file" id="photo2" accept="image/*">
     <input type="file" id="photo3" accept="image/*">
     <div class="photos" id="photoPreview"></div>
-    <div class="small-muted">Tip: after taking each photo allow it to finish loading before next.</div>
+    <div class="small-muted">Tip: after taking each photo allow processing before adding the next.</div>
   </div>
   <div class="row">
     <button id="saveEntryBtn">Save Entry</button>
@@ -66,18 +51,13 @@ button { cursor:pointer; }
   </div>
 </div>
 
-<!-- Overlay for Photos -->
-<div id="overlay" onclick="this.style.display='none'">
-  <img id="overlayImg" src="">
-</div>
-
 <script>
-/* ------------------------------
- Supabase setup
--------------------------------*/
-const supabaseUrl = 'https://gkqtfxwpyfekiavszxkr.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInJlZiI6ImFub24iLCJpYXQiOjE3NjQwODYzNDIsImV4cCI6MjA3OTY2MjM0Mn0.ntlEFLcjB4oFLwHlm-c36j4osLhW5u9zgmapXnTR_ow';
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+/* -----------------------------
+  Supabase config
+------------------------------*/
+const SUPABASE_URL = 'https://gkqtfxwpyfekiavszxkr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // your anon key
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ---------- USERS ---------- */
 let users = [
@@ -93,98 +73,66 @@ function login(){
   const found = users.find(x => x.username === u && x.password === p);
   if(found){
     localStorage.setItem('currentUser', u);
-    document.getElementById('currentUserDisplay').textContent = u;
-    showHome();
+    showAddEntry();
   } else {
     alert('Invalid credentials.');
   }
 }
-function hideAll(){ ['loginPage','homePage','addEntryPage'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
-function showHome(){ hideAll(); document.getElementById('homePage').classList.remove('hidden'); }
+function hideAll(){ ['loginPage','addEntryPage'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
 function showAddEntry(){ hideAll(); document.getElementById('addEntryPage').classList.remove('hidden'); }
-function backToHome(){ hideAll(); document.getElementById('homePage').classList.remove('hidden'); }
-
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  localStorage.removeItem('currentUser');
+document.getElementById('backFromAdd').addEventListener('click', ()=>{
   hideAll();
   document.getElementById('loginPage').classList.remove('hidden');
-  document.getElementById('loginUser').value = '';
-  document.getElementById('loginPass').value = '';
 });
+document.getElementById('loginBtn').addEventListener('click', login);
 
 /* ---------- PHOTO HANDLING ---------- */
 const photoInputs = ['photo1','photo2','photo3'];
 let currentPhotos = [];
-
 photoInputs.forEach(id => {
   document.getElementById(id).addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if(!file) return;
 
-    currentPhotos.push({ file });
-
     const previewUrl = URL.createObjectURL(file);
     const img = document.createElement('img');
     img.src = previewUrl;
-    img.addEventListener('click', ()=> zoomPhoto(previewUrl));
+    img.addEventListener('click', ()=> alert('Photo clicked')); // simple zoom placeholder
     document.getElementById('photoPreview').appendChild(img);
 
-    img.onload = () => URL.revokeObjectURL(previewUrl);
+    const reader = new FileReader();
+    reader.onload = () => { currentPhotos.push({name:file.name, data:reader.result}); };
+    reader.readAsDataURL(file);
   });
 });
 
-/* ---------- SAVE ENTRY TO SUPABASE ---------- */
-document.getElementById('saveEntryBtn').addEventListener('click', async ()=>{
+/* ---------- SAVE ENTRY ---------- */
+document.getElementById('saveEntryBtn').addEventListener('click', async () => {
   const prodOrder = document.getElementById('prodOrder').value.trim();
   const drNumber = document.getElementById('drNumber').value.trim();
   const currentUser = localStorage.getItem('currentUser') || 'Unknown';
 
   if(!prodOrder || !drNumber){ alert('Fill all fields'); return; }
-  if(currentPhotos.length < 3){ alert('At least 3 photos required'); return; }
+  if(currentPhotos.length<3){ alert('At least 3 photos required'); return; }
 
-  // Convert photos to Base64
-  const photosBase64 = await Promise.all(currentPhotos.map(async p => {
-    return await blobToBase64(p.file);
-  }));
+  const { data, error } = await supabase.from('production_entries').insert([{
+    prod_order: prodOrder,
+    dr_number: drNumber,
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toLocaleTimeString(),
+    user: currentUser,
+    photos: currentPhotos,
+    sent_email: false
+  }]);
 
-  const { data, error } = await supabase
-    .from('entries')
-    .insert([{ prodOrder, drNumber, user: currentUser, photos: photosBase64 }]);
+  if(error){ console.error(error); alert('Save failed'); return; }
 
-  if(error){ alert('Save failed: ' + error.message); return; }
-
-  alert('Entry saved!');
-
-  // Clear inputs
+  alert('Entry saved to Supabase!');
   document.getElementById('prodOrder').value = '';
   document.getElementById('drNumber').value = '';
   currentPhotos = [];
   document.getElementById('photoPreview').innerHTML = '';
 });
-
-// Helper to convert blob to Base64
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-function zoomPhoto(src){
-  document.getElementById('overlayImg').src = src;
-  document.getElementById('overlay').style.display = 'flex';
-}
-
-/* ---------- BUTTONS ---------- */
-document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('addEntryBtn').addEventListener('click', showAddEntry);
-document.getElementById('backFromAdd').addEventListener('click', backToHome);
-
-/* ---------- Init ---------- */
-hideAll();
-document.getElementById('loginPage').classList.remove('hidden');
 </script>
 </body>
 </html>
