@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Millitron Quality - Stable (Option C)</title>
+<title>Millitron Production Entry</title>
 <style>
 body { font-family: sans-serif; margin:0; padding:20px; background:#f5f5f5; }
 h1,h2 { text-align:center; }
@@ -13,16 +13,17 @@ button { cursor:pointer; }
 .row { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:10px 0; }
 .photos { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px 0; }
 .photos img { max-width:120px; cursor:pointer; border:1px solid #ccc; }
-.list-entry { display:flex; flex-direction:column; align-items:center; margin-bottom:15px; width:100%; max-width:300px; }
-.hidden { display:none; }
 .small-muted { font-size:12px; color:#666; text-align:center; margin-top:6px; }
+.hidden { display:none; }
+#overlay { position:fixed; display:none; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999; }
+#overlay img { max-width:90%; max-height:90%; }
 </style>
 </head>
 <body>
 
 <!-- Login -->
 <div id="loginPage" class="center">
-  <h1>Millitron Quality v2</h1>
+  <h1>Millitron Production Entry</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
@@ -33,113 +34,128 @@ button { cursor:pointer; }
 <!-- Add Entry -->
 <div id="addEntryPage" class="center hidden">
   <h2>Add Production Entry</h2>
-  <div class="list-entry"><label>Production Order:</label><input type="text" id="prodOrder"></div>
-  <div class="list-entry"><label>DR Number:</label><input type="text" id="drNumber"></div>
-  <div class="list-entry">
-    <label>Photos (3+). Full-resolution files will auto-download to your device; thumbnails are stored in the app.</label>
+  <div class="row">
+    <div>
+      <label>Production Order:</label>
+      <input type="text" id="prodOrder">
+    </div>
+    <div>
+      <label>DR Number:</label>
+      <input type="text" id="drNumber">
+    </div>
+  </div>
+  <div class="row">
+    <label>Photos (3+ required):</label>
     <input type="file" id="photo1" accept="image/*">
     <input type="file" id="photo2" accept="image/*">
     <input type="file" id="photo3" accept="image/*">
-    <div class="photos" id="photoPreview"></div>
-    <div class="small-muted">Tip: after taking each photo allow the download to finish before taking the next one.</div>
   </div>
+  <div class="photos" id="photoPreview"></div>
+  <div class="small-muted">Tip: after taking each photo allow the upload to finish before the next.</div>
   <div class="row">
     <button id="sendEmailBtn">Send Email</button>
     <button id="logoutBtn">Logout</button>
   </div>
 </div>
 
+<!-- Overlay -->
+<div id="overlay" onclick="this.style.display='none'">
+  <img id="overlayImg" src="">
+</div>
+
 <script>
-/* ---------- USERS ---------- */
+/* ------------------------------
+USERS
+-------------------------------*/
 let users = [
   {username:"Admin", password:"AB4826"},
   {username:"Dave", password:"Quality"}
 ];
-const savedUsers = localStorage.getItem('users');
-if(savedUsers){
-  try { users = JSON.parse(savedUsers); } catch(e){ console.error(e); }
-} else {
-  localStorage.setItem('users', JSON.stringify(users));
-}
 
-/* ---------- LOGIN ---------- */
+/* ------------------------------
+LOGIN
+-------------------------------*/
 function login(){
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
-  const found = users.find(x => x.username === u && x.password === p);
+  const found = users.find(x => x.username===u && x.password===p);
   if(found){
     localStorage.setItem('currentUser', u);
-    document.getElementById('loginUser').value = '';
-    document.getElementById('loginPass').value = '';
-    showAddEntry();
-  } else {
-    alert('Invalid credentials.');
-  }
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('addEntryPage').classList.remove('hidden');
+  } else { alert('Invalid credentials'); }
 }
 
-/* ---------- PAGE DISPLAY ---------- */
-function hideAll(){ ['loginPage','addEntryPage'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
-function showAddEntry(){ hideAll(); document.getElementById('addEntryPage').classList.remove('hidden'); }
+document.getElementById('loginBtn').addEventListener('click', login);
 
-/* ---------- PHOTO HANDLING ---------- */
+/* ------------------------------
+PHOTO PREVIEW
+-------------------------------*/
 const photoInputs = ['photo1','photo2','photo3'];
 let currentPhotos = [];
-photoInputs.forEach(id => {
-  document.getElementById(id).addEventListener('change', async (e) => {
+
+photoInputs.forEach(id=>{
+  document.getElementById(id).addEventListener('change', (e)=>{
     const file = e.target.files[0];
     if(!file) return;
-
     currentPhotos.push(file);
-
-    const previewUrl = URL.createObjectURL(file);
+    const url = URL.createObjectURL(file);
     const img = document.createElement('img');
-    img.src = previewUrl;
-    img.addEventListener('click', ()=> window.open(previewUrl));
+    img.src = url;
+    img.addEventListener('click', ()=>{ document.getElementById('overlayImg').src = url; document.getElementById('overlay').style.display='flex'; });
     document.getElementById('photoPreview').appendChild(img);
   });
 });
 
-/* ---------- SEND EMAIL ---------- */
-document.getElementById('sendEmailBtn').addEventListener('click', async ()=>{
+/* ------------------------------
+SEND ENTRY
+-------------------------------*/
+async function sendEntry(){
   const prodOrder = document.getElementById('prodOrder').value.trim();
   const drNumber = document.getElementById('drNumber').value.trim();
-  const currentUser = localStorage.getItem('currentUser') || 'Unknown';
+  const user = localStorage.getItem('currentUser') || 'Unknown';
 
   if(!prodOrder || !drNumber){ alert('Fill all fields'); return; }
   if(currentPhotos.length < 3){ alert('Attach at least 3 photos'); return; }
 
-  // Prepare email body
-  const body = `
-Production Order: ${prodOrder}
-DR Number: ${drNumber}
-User: ${currentUser}
-`;
+  // convert photos to base64
+  const photosBase64 = await Promise.all(currentPhotos.map(file=>{
+    return new Promise(resolve=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve({ name:file.name, data:reader.result });
+      reader.readAsDataURL(file);
+    });
+  }));
 
-  // Mailto link with body and attachments (attachments need manual selection for mailto)
-  const mailto = `mailto:recipient@example.com?subject=Production Entry - ${prodOrder}&body=${encodeURIComponent(body)}`;
-  window.location.href = mailto;
+  // send to Supabase Function
+  const res = await fetch('https://YOUR_SUPABASE_FUNCTION_URL/send-entry', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({ prodOrder, drNumber, user, photos: photosBase64 })
+  });
 
-  // Clear fields & previews
-  document.getElementById('prodOrder').value='';
-  document.getElementById('drNumber').value='';
-  currentPhotos = [];
-  document.getElementById('photoPreview').innerHTML='';
-});
+  if(res.ok){
+    alert('Email sent to adam.blundell@milliken.com!');
+    document.getElementById('prodOrder').value='';
+    document.getElementById('drNumber').value='';
+    currentPhotos=[];
+    document.getElementById('photoPreview').innerHTML='';
+  } else {
+    alert('Failed to send email');
+    console.error(await res.text());
+  }
+}
 
-/* ---------- LOGOUT ---------- */
+document.getElementById('sendEmailBtn').addEventListener('click', sendEntry);
+
+/* ------------------------------
+LOGOUT
+-------------------------------*/
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   localStorage.removeItem('currentUser');
-  hideAll();
+  document.getElementById('addEntryPage').classList.add('hidden');
   document.getElementById('loginPage').classList.remove('hidden');
 });
-
-/* ---------- BUTTONS ---------- */
-document.getElementById('loginBtn').addEventListener('click', login);
-
-/* ---------- INIT ---------- */
-hideAll();
-document.getElementById('loginPage').classList.remove('hidden');
 </script>
-
 </body>
 </html>
