@@ -20,15 +20,12 @@ button { cursor:pointer; }
 
 <!-- Latest EmailJS SDK -->
 <script type="text/javascript" src="https://cdn.emailjs.com/sdk/3.14.0/email.min.js"></script>
-<script type="text/javascript">
-   (function(){ emailjs.init('GM8geKKfTUv87uZu3'); })();
-</script>
 </head>
 <body>
 
 <!-- Login Page -->
 <div id="loginPage" class="center">
-  <h1>Millitron Quality v2</h1>
+  <h1>Millitron Quality v3</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
@@ -73,172 +70,178 @@ button { cursor:pointer; }
 </div>
 
 <script>
-/* ---------- USERS ---------- */
-let users = JSON.parse(localStorage.getItem('users')) || [
-  {username:"Admin", password:"AB4826"},
-  {username:"Dave", password:"Quality"},
-  {username:"John", password:"Password123"},
-  {username:"Jane", password:"SecurePass"},
-  {username:"Alex", password:"Alex2025"}
-];
+window.onload = function() {
 
-function saveUsers() { localStorage.setItem('users', JSON.stringify(users)); }
+  // Initialize EmailJS
+  emailjs.init('GM8geKKfTUv87uZu3');
 
-/* ---------- NAV & AUTH ---------- */
-function login(){
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  const found = users.find(x => x.username === u && x.password === p);
-  if(found){
-    localStorage.setItem('currentUser', u);
-    showAddEntry();
-    if(u === "Admin") document.getElementById('userMgmtBtn').classList.remove('hidden');
-  } else alert('Invalid credentials.');
-}
+  /* ---------- USERS ---------- */
+  let users = JSON.parse(localStorage.getItem('users')) || [
+    {username:"Admin", password:"AB4826"},
+    {username:"Dave", password:"Quality"},
+    {username:"John", password:"Password123"},
+    {username:"Jane", password:"SecurePass"},
+    {username:"Alex", password:"Alex2025"}
+  ];
 
-function hideAll(){ ['loginPage','addEntryPage','userMgmtPage'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
-function showAddEntry(){ hideAll(); document.getElementById('addEntryPage').classList.remove('hidden'); }
+  function saveUsers() { localStorage.setItem('users', JSON.stringify(users)); }
 
-/* ---------- USER MANAGEMENT ---------- */
-function showUserMgmt() {
-  hideAll();
-  document.getElementById('userMgmtPage').classList.remove('hidden');
-  renderUserList();
-}
+  /* ---------- NAV & AUTH ---------- */
+  function login(){
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value;
+    const found = users.find(x => x.username === u && x.password === p);
+    if(found){
+      localStorage.setItem('currentUser', u);
+      showAddEntry();
+      if(u === "Admin") document.getElementById('userMgmtBtn').classList.remove('hidden');
+    } else alert('Invalid credentials.');
+  }
 
-function renderUserList() {
-  const container = document.getElementById('userList');
-  container.innerHTML = '';
-  users.forEach((u, i) => {
-    const div = document.createElement('div');
-    div.className = 'list-entry';
-    div.innerHTML = `
-      <span><strong>${u.username}</strong>: ${u.password}</span>
-      <button onclick="editUser(${i})">Edit</button>
-      <button onclick="deleteUser(${i})">Delete</button>
-    `;
-    container.appendChild(div);
-  });
-}
+  function hideAll(){ ['loginPage','addEntryPage','userMgmtPage'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+  function showAddEntry(){ hideAll(); document.getElementById('addEntryPage').classList.remove('hidden'); }
 
-function addUser() {
-  const newU = document.getElementById('newUsername').value.trim();
-  const newP = document.getElementById('newPassword').value.trim();
-  if(!newU || !newP) return alert('Enter username and password');
-  if(users.find(x => x.username === newU)) return alert('Username already exists');
-  users.push({username:newU, password:newP});
-  saveUsers();
-  renderUserList();
-  document.getElementById('newUsername').value='';
-  document.getElementById('newPassword').value='';
-}
-
-function editUser(index) {
-  const newPass = prompt('Enter new password for ' + users[index].username, users[index].password);
-  if(newPass !== null && newPass.trim() !== '') {
-    users[index].password = newPass.trim();
-    saveUsers();
+  /* ---------- USER MANAGEMENT ---------- */
+  function showUserMgmt() {
+    hideAll();
+    document.getElementById('userMgmtPage').classList.remove('hidden');
     renderUserList();
   }
-}
 
-function deleteUser(index) {
-  if(users[index].username === 'Admin') return alert('Cannot delete Admin');
-  if(confirm(`Delete user ${users[index].username}?`)) {
-    users.splice(index,1);
+  function renderUserList() {
+    const container = document.getElementById('userList');
+    container.innerHTML = '';
+    users.forEach((u, i) => {
+      const div = document.createElement('div');
+      div.className = 'list-entry';
+      div.innerHTML = `
+        <span><strong>${u.username}</strong>: ${u.password}</span>
+        <button onclick="editUser(${i})">Edit</button>
+        <button onclick="deleteUser(${i})">Delete</button>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function addUser() {
+    const newU = document.getElementById('newUsername').value.trim();
+    const newP = document.getElementById('newPassword').value.trim();
+    if(!newU || !newP) return alert('Enter username and password');
+    if(users.find(x => x.username === newU)) return alert('Username already exists');
+    users.push({username:newU, password:newP});
     saveUsers();
     renderUserList();
+    document.getElementById('newUsername').value='';
+    document.getElementById('newPassword').value='';
   }
-}
 
-/* ---------- PHOTO HANDLING ---------- */
-const photoInputs = ['photo1','photo2','photo3'];
-let photoFiles = [];
+  function editUser(index) {
+    const newPass = prompt('Enter new password for ' + users[index].username, users[index].password);
+    if(newPass !== null && newPass.trim() !== '') {
+      users[index].password = newPass.trim();
+      saveUsers();
+      renderUserList();
+    }
+  }
 
-photoInputs.forEach(id => {
-  document.getElementById(id).addEventListener('change', e => {
-    const file = e.target.files[0];
-    if(!file) return;
-    photoFiles.push(file);
-    const previewUrl = URL.createObjectURL(file);
-    const img = document.createElement('img');
-    img.src = previewUrl;
-    img.addEventListener('click', ()=> window.open(previewUrl));
-    document.getElementById('photoPreview').appendChild(img);
-  });
-});
+  function deleteUser(index) {
+    if(users[index].username === 'Admin') return alert('Cannot delete Admin');
+    if(confirm(`Delete user ${users[index].username}?`)) {
+      users.splice(index,1);
+      saveUsers();
+      renderUserList();
+    }
+  }
 
-/* ---------- SEND EMAIL WITH ATTACHMENTS ---------- */
-function sendEmail() {
-  const prodOrder = document.getElementById('prodOrder').value.trim();
-  const drNumber = document.getElementById('drNumber').value.trim();
-  if(!prodOrder || !drNumber) return alert('Fill all fields');
-  if(photoFiles.length < 3) return alert('Select at least 3 photos');
+  /* ---------- PHOTO HANDLING ---------- */
+  const photoInputs = ['photo1','photo2','photo3'];
+  let photoFiles = [];
 
-  const currentUser = localStorage.getItem('currentUser') || 'Unknown';
-
-  const attachmentsPromises = photoFiles.map(file => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64Data = reader.result.split(',')[1] || reader.result;
-        resolve({name: file.name, data: base64Data});
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+  photoInputs.forEach(id => {
+    document.getElementById(id).addEventListener('change', e => {
+      const file = e.target.files[0];
+      if(!file) return;
+      photoFiles.push(file);
+      const previewUrl = URL.createObjectURL(file);
+      const img = document.createElement('img');
+      img.src = previewUrl;
+      img.addEventListener('click', ()=> window.open(previewUrl));
+      document.getElementById('photoPreview').appendChild(img);
     });
   });
 
-  Promise.all(attachmentsPromises)
-    .then(attachments => {
-      const templateParams = {
-        prodOrder: prodOrder,
-        drNumber: drNumber,
-        user: currentUser,
-        attachments: attachments
-      };
+  /* ---------- SEND EMAIL WITH ATTACHMENTS ---------- */
+  function sendEmail() {
+    const prodOrder = document.getElementById('prodOrder').value.trim();
+    const drNumber = document.getElementById('drNumber').value.trim();
+    if(!prodOrder || !drNumber) return alert('Fill all fields');
+    if(photoFiles.length < 3) return alert('Select at least 3 photos');
 
-      emailjs.send('service_l486r2y','template_z9ceflo', templateParams)
-        .then(response => {
-          alert('Email sent successfully!');
-          document.getElementById('prodOrder').value='';
-          document.getElementById('drNumber').value='';
-          photoFiles = [];
-          document.getElementById('photoPreview').innerHTML='';
-        })
-        .catch(error => {
-          console.error('EmailJS error:', error);
-          alert('Failed to send email: ' + JSON.stringify(error));
-        });
-    })
-    .catch(err => {
-      console.error('Attachment error:', err);
-      alert('Failed to process attachments: ' + err);
+    const currentUser = localStorage.getItem('currentUser') || 'Unknown';
+
+    const attachmentsPromises = photoFiles.map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64Data = reader.result.split(',')[1] || reader.result;
+          resolve({name: file.name, data: base64Data});
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
     });
-}
 
-/* ---------- BUTTONS ---------- */
-document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  localStorage.removeItem('currentUser');
+    Promise.all(attachmentsPromises)
+      .then(attachments => {
+        const templateParams = {
+          prodOrder: prodOrder,
+          drNumber: drNumber,
+          user: currentUser,
+          attachments: attachments
+        };
+
+        emailjs.send('service_l486r2y','template_z9ceflo', templateParams)
+          .then(response => {
+            alert('Email sent successfully!');
+            document.getElementById('prodOrder').value='';
+            document.getElementById('drNumber').value='';
+            photoFiles = [];
+            document.getElementById('photoPreview').innerHTML='';
+          })
+          .catch(error => {
+            console.error('EmailJS error:', error);
+            alert('Failed to send email: ' + JSON.stringify(error));
+          });
+      })
+      .catch(err => {
+        console.error('Attachment error:', err);
+        alert('Failed to process attachments: ' + err);
+      });
+  }
+
+  /* ---------- BUTTONS ---------- */
+  document.getElementById('loginBtn').addEventListener('click', login);
+  document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
+  document.getElementById('logoutBtn').addEventListener('click', ()=>{
+    localStorage.removeItem('currentUser');
+    hideAll();
+    document.getElementById('loginPage').classList.remove('hidden');
+    document.getElementById('prodOrder').value='';
+    document.getElementById('drNumber').value='';
+    photoFiles = [];
+    document.getElementById('photoPreview').innerHTML='';
+    document.getElementById('userMgmtBtn').classList.add('hidden');
+  });
+
+  document.getElementById('userMgmtBtn').addEventListener('click', showUserMgmt);
+  document.getElementById('backBtn').addEventListener('click', showAddEntry);
+  document.getElementById('addUserBtn').addEventListener('click', addUser);
+
+  /* ---------- INIT ---------- */
   hideAll();
   document.getElementById('loginPage').classList.remove('hidden');
-  document.getElementById('prodOrder').value='';
-  document.getElementById('drNumber').value='';
-  photoFiles = [];
-  document.getElementById('photoPreview').innerHTML='';
-  document.getElementById('userMgmtBtn').classList.add('hidden');
-});
-
-document.getElementById('userMgmtBtn').addEventListener('click', showUserMgmt);
-document.getElementById('backBtn').addEventListener('click', showAddEntry);
-document.getElementById('addUserBtn').addEventListener('click', addUser);
-
-/* ---------- INIT ---------- */
-hideAll();
-document.getElementById('loginPage').classList.remove('hidden');
-saveUsers();
+  saveUsers();
+};
 </script>
 
 </body>
