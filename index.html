@@ -26,7 +26,7 @@ button { cursor:pointer; }
 
 <!-- Login Page -->
 <div id="loginPage" class="center">
-  <h1>Millitron Quality</h1>
+  <h1>Millitron Quality auto send v1</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
@@ -166,7 +166,7 @@ photoInputs.forEach(id => {
   });
 });
 
-/* ---------- SEND EMAIL ---------- */
+/* ---------- SEND EMAIL WITH ATTACHMENTS ---------- */
 function sendEmail() {
   const prodOrder = document.getElementById('prodOrder').value.trim();
   const drNumber = document.getElementById('drNumber').value.trim();
@@ -175,34 +175,45 @@ function sendEmail() {
 
   const currentUser = localStorage.getItem('currentUser') || 'Unknown';
 
-  // Convert photos to base64
   const attachmentsPromises = photoFiles.map(file => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve({name: file.name, data: reader.result.split(',')[1]});
+      reader.onload = () => {
+        const base64Data = reader.result.split(',')[1] || reader.result;
+        resolve({name: file.name, data: base64Data});
+      };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   });
 
-  Promise.all(attachmentsPromises).then(attachments => {
-    const templateParams = {
-      subject: `Production Entry: ${prodOrder}`,
-      prodOrder: prodOrder,
-      drNumber: drNumber,
-      user: currentUser,
-      attachments: attachments
-    };
+  Promise.all(attachmentsPromises)
+    .then(attachments => {
+      const templateParams = {
+        subject: `Production Entry: ${prodOrder}`,
+        prodOrder: prodOrder,
+        drNumber: drNumber,
+        user: currentUser,
+        attachments: attachments
+      };
 
-    emailjs.send('service_l486r2y','template_ttnq0nu', templateParams)
-      .then(response => { alert('Email sent successfully!'); 
-        // clear fields
-        document.getElementById('prodOrder').value='';
-        document.getElementById('drNumber').value='';
-        photoFiles = [];
-        document.getElementById('photoPreview').innerHTML='';
-      }, error => { alert('Failed to send email: '+error); });
-  });
+      emailjs.send('service_l486r2y','template_ttnq0nu', templateParams)
+        .then(response => {
+          alert('Email sent successfully!');
+          document.getElementById('prodOrder').value='';
+          document.getElementById('drNumber').value='';
+          photoFiles = [];
+          document.getElementById('photoPreview').innerHTML='';
+        })
+        .catch(error => {
+          console.error('EmailJS error:', error);
+          alert('Failed to send email: ' + JSON.stringify(error));
+        });
+    })
+    .catch(err => {
+      console.error('Attachment error:', err);
+      alert('Failed to process attachments: ' + err);
+    });
 }
 
 /* ---------- BUTTONS ---------- */
