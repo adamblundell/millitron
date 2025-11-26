@@ -22,7 +22,7 @@ button { cursor:pointer; }
 
 <!-- Login Page -->
 <div id="loginPage" class="center">
-  <h1>Millitron Qualitaaaay</h1>
+  <h1>Millitron Qualit    vsdvsvsvsvy</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
@@ -69,11 +69,28 @@ import emailjs from 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.
 emailjs.init('GM8geKKfTUv87uZu3'); // Your public key
 
 // ---------- USERS ----------
-let users = JSON.parse(localStorage.getItem('users')) || [
-  {username:"Admin", password:"AB4826"},
-  {username:"Dave", password:"Quality"}
-];
+function getDefaultUsers() {
+  return [
+    {username:"Admin", password:"AB4826"},
+    {username:"Dave", password:"Quality"}
+  ];
+}
+
+let users;
 function saveUsers() { localStorage.setItem('users', JSON.stringify(users)); }
+
+try {
+  const stored = JSON.parse(localStorage.getItem('users'));
+  if (!Array.isArray(stored) || stored.length === 0 || !stored.find(u => u.username === 'Admin')) {
+    users = getDefaultUsers();
+    saveUsers();
+  } else {
+    users = stored;
+  }
+} catch(e) {
+  users = getDefaultUsers();
+  saveUsers();
+}
 
 // ---------- NAV & AUTH ----------
 function login(){
@@ -204,4 +221,3 @@ saveUsers();
 </script>
 </body>
 </html>
-
