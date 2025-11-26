@@ -26,7 +26,7 @@ button { cursor:pointer; }
 
 <!-- Login Page -->
 <div id="loginPage" class="center">
-  <h1>Millitron Quality auto send v1</h1>
+  <h1>Millitron Quality v2</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
@@ -197,7 +197,7 @@ function sendEmail() {
         attachments: attachments
       };
 
-      emailjs.send('service_l486r2y','template_ttnq0nu', templateParams)
+      emailjs.send('service_l486r2y','template_4gqmia6', templateParams)
         .then(response => {
           alert('Email sent successfully!');
           document.getElementById('prodOrder').value='';
