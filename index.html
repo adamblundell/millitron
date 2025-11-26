@@ -53,7 +53,7 @@ button { cursor:pointer; }
   <div class="photos" id="photoPreview"></div>
   <div class="small-muted">Tip: after taking each photo allow the upload to finish before the next.</div>
   <div class="row">
-    <button id="sendEmailBtn">Send Email</button>
+    <button id="sendEmailBtn">Save Entry</button>
     <button id="logoutBtn">Logout</button>
   </div>
 </div>
@@ -63,7 +63,13 @@ button { cursor:pointer; }
   <img id="overlayImg" src="">
 </div>
 
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const supabaseUrl = 'https://gkqtfxwpyfekiavszxkr.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrcXRmeHdweWZla2lhdnN6eGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwODYzNDIsImV4cCI6MjA3OTY2MjM0Mn0.ntlEFLcjB4oFLwHlm-c36j4osLhW5u9zgmapXnTR_ow';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
 /* ------------------------------
 USERS
 -------------------------------*/
@@ -108,7 +114,7 @@ photoInputs.forEach(id=>{
 });
 
 /* ------------------------------
-SEND ENTRY
+SAVE ENTRY TO SUPABASE
 -------------------------------*/
 async function sendEntry(){
   const prodOrder = document.getElementById('prodOrder').value.trim();
@@ -118,7 +124,6 @@ async function sendEntry(){
   if(!prodOrder || !drNumber){ alert('Fill all fields'); return; }
   if(currentPhotos.length < 3){ alert('Attach at least 3 photos'); return; }
 
-  // convert photos to base64
   const photosBase64 = await Promise.all(currentPhotos.map(file=>{
     return new Promise(resolve=>{
       const reader = new FileReader();
@@ -127,22 +132,25 @@ async function sendEntry(){
     });
   }));
 
-  // send to Supabase Function
-  const res = await fetch('https://YOUR_SUPABASE_FUNCTION_URL/send-entry', {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify({ prodOrder, drNumber, user, photos: photosBase64 })
-  });
+  const { data, error } = await supabase
+    .from('records')
+    .insert([{
+      prodOrder,
+      drNumber,
+      user,
+      photos: photosBase64,
+      created_at: new Date()
+    }]);
 
-  if(res.ok){
-    alert('Email sent to adam.blundell@milliken.com!');
+  if(error){
+    console.error(error);
+    alert('Failed to save entry');
+  } else {
+    alert('Entry saved! Email will be sent automatically.');
     document.getElementById('prodOrder').value='';
     document.getElementById('drNumber').value='';
     currentPhotos=[];
     document.getElementById('photoPreview').innerHTML='';
-  } else {
-    alert('Failed to send email');
-    console.error(await res.text());
   }
 }
 
