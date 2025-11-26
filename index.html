@@ -37,14 +37,12 @@ button { cursor:pointer; }
   <div class="list-entry"><label>DR Number:</label><input type="text" id="drNumber"></div>
   <div class="list-entry">
     <label>Photos (3+):</label>
-    <input type="file" id="photo1" accept="image/*">
-    <input type="file" id="photo2" accept="image/*">
-    <input type="file" id="photo3" accept="image/*">
+    <input type="file" id="photos" accept="image/*" multiple>
     <div class="photos" id="photoPreview"></div>
-    <div class="small-muted">Tip: after selecting each photo, wait a moment for preview.</div>
+    <div class="small-muted">Tip: select all photos at once.</div>
   </div>
   <div class="row">
-    <button id="sendEmailBtn" disabled>Send Entry via Email</button>
+    <button id="sendEmailBtn">Send Entry via Email</button>
     <button id="logoutBtn">Logout</button>
     <button id="userMgmtBtn" class="hidden">User Management</button>
   </div>
@@ -66,14 +64,14 @@ button { cursor:pointer; }
   </div>
 </div>
 
-<script>
+<script type="module">
+import emailjs from 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+emailjs.init('GM8geKKfTUv87uZu3'); // Your public key
+
 // ---------- USERS ----------
 let users = JSON.parse(localStorage.getItem('users')) || [
   {username:"Admin", password:"AB4826"},
-  {username:"Dave", password:"Quality"},
-  {username:"John", password:"Password123"},
-  {username:"Jane", password:"SecurePass"},
-  {username:"Alex", password:"Alex2025"}
+  {username:"Dave", password:"Quality"}
 ];
 function saveUsers() { localStorage.setItem('users', JSON.stringify(users)); }
 
@@ -120,7 +118,7 @@ function addUser() {
   document.getElementById('newUsername').value='';
   document.getElementById('newPassword').value='';
 }
-function editUser(index) {
+window.editUser = function(index) {
   const newPass = prompt('Enter new password for ' + users[index].username, users[index].password);
   if(newPass !== null && newPass.trim() !== '') {
     users[index].password = newPass.trim();
@@ -128,7 +126,7 @@ function editUser(index) {
     renderUserList();
   }
 }
-function deleteUser(index) {
+window.deleteUser = function(index) {
   if(users[index].username === 'Admin') return alert('Cannot delete Admin');
   if(confirm(`Delete user ${users[index].username}?`)) {
     users.splice(index,1);
@@ -138,43 +136,22 @@ function deleteUser(index) {
 }
 
 // ---------- PHOTO HANDLING ----------
-const photoInputs = ['photo1','photo2','photo3'];
+const photoInput = document.getElementById('photos');
 let photoFiles = [];
-photoInputs.forEach(id => {
-  document.getElementById(id).addEventListener('change', e => {
-    const file = e.target.files[0];
-    if(!file) return;
-    photoFiles.push(file);
-    const previewUrl = URL.createObjectURL(file);
+photoInput.addEventListener('change', e => {
+  photoFiles = Array.from(e.target.files);
+  const preview = document.getElementById('photoPreview');
+  preview.innerHTML = '';
+  photoFiles.forEach(file => {
     const img = document.createElement('img');
-    img.src = previewUrl;
-    img.addEventListener('click', ()=> window.open(previewUrl));
-    document.getElementById('photoPreview').appendChild(img);
+    img.src = URL.createObjectURL(file);
+    img.addEventListener('click', () => window.open(img.src));
+    preview.appendChild(img);
   });
 });
 
-// ---------- DYNAMIC EMAILJS LOAD & SEND EMAIL ----------
-function loadEmailJS(callback) {
-  if(typeof emailjs !== 'undefined') {
-    callback();
-    return;
-  }
-  const script = document.createElement('script');
-  script.src = "https://cdn.emailjs.com/sdk/3.14.0/email.min.js";
-  script.onload = function() {
-    emailjs.init('GM8geKKfTUv87uZu3');
-    document.getElementById('sendEmailBtn').disabled = false;
-    callback();
-  };
-  script.onerror = function() { alert('Failed to load EmailJS SDK'); };
-  document.head.appendChild(script);
-}
-
-function sendEmail() {
-  if(typeof emailjs === 'undefined') {
-    alert('EmailJS not loaded yet. Please wait a moment.');
-    return;
-  }
+// ---------- SEND EMAIL ----------
+async function sendEmail() {
   const prodOrder = document.getElementById('prodOrder').value.trim();
   const drNumber = document.getElementById('drNumber').value.trim();
   if(!prodOrder || !drNumber) return alert('Fill all fields');
@@ -182,38 +159,29 @@ function sendEmail() {
 
   const currentUser = localStorage.getItem('currentUser') || 'Unknown';
 
-  const attachmentsPromises = photoFiles.map(file => new Promise((resolve, reject) => {
+  const attachments = await Promise.all(photoFiles.map(file => new Promise((resolve,reject)=>{
     const reader = new FileReader();
-    reader.onload = () => {
-      const base64Data = reader.result.split(',')[1] || reader.result;
-      resolve({name:file.name, data:base64Data});
-    };
+    reader.onload = () => resolve({ name: file.name, data: reader.result.split(',')[1] });
     reader.onerror = reject;
     reader.readAsDataURL(file);
-  }));
+  })));
 
-  Promise.all(attachmentsPromises).then(attachments=>{
-    const templateParams = {
-      prodOrder: prodOrder,
-      drNumber: drNumber,
-      user: currentUser,
-      attachments: attachments
-    };
-    emailjs.send('service_l486r2y','template_z9ceflo', templateParams)
-      .then(response => {
-        alert('Email sent successfully!');
-        document.getElementById('prodOrder').value='';
-        document.getElementById('drNumber').value='';
-        photoFiles=[];
-        document.getElementById('photoPreview').innerHTML='';
-      })
-      .catch(error => { console.error('EmailJS error:',error); alert('Failed to send email: '+JSON.stringify(error)); });
-  }).catch(err=>{ console.error('Attachment error:',err); alert('Failed to process attachments: '+err); });
+  const templateParams = { prodOrder, drNumber, user: currentUser, attachments };
+
+  emailjs.send('service_l486r2y', 'template_z9ceflo', templateParams)
+    .then(()=> {
+      alert('Email sent successfully!');
+      document.getElementById('prodOrder').value='';
+      document.getElementById('drNumber').value='';
+      photoFiles=[];
+      document.getElementById('photoPreview').innerHTML='';
+    })
+    .catch(err=> alert('Failed: '+JSON.stringify(err)));
 }
 
 // ---------- BUTTONS ----------
 document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('sendEmailBtn').addEventListener('click', ()=>loadEmailJS(sendEmail));
+document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   localStorage.removeItem('currentUser');
   hideAll();
@@ -232,7 +200,7 @@ document.getElementById('addUserBtn').addEventListener('click', addUser);
 hideAll();
 document.getElementById('loginPage').classList.remove('hidden');
 saveUsers();
-</script>
 
+</script>
 </body>
 </html>
