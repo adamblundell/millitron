@@ -22,8 +22,8 @@ button { cursor:pointer; }
 
 <!-- Login Page -->
 <div id="loginPage" class="center">
-  <h1>Millitron Quality supabase record</h1>
-  <input type="text" id="loginUser" placeholder="Username">
+  <h1>Millitron Quality</h1>
+  <input type="email" id="loginEmail" placeholder="Email">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
     <button id="loginBtn">Login</button>
@@ -44,39 +44,34 @@ button { cursor:pointer; }
     <div class="small-muted">Tip: after selecting each photo, wait a moment for preview.</div>
   </div>
   <div class="row">
-    <button id="sendEmailBtn">Save Entry</button>
+    <button id="sendEntryBtn">Save Entry</button>
     <button id="logoutBtn">Logout</button>
   </div>
 </div>
 
-<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const supabaseUrl = 'https://gkqtfxwpyfekiavszxkr.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrcXRmeHdweWZla2lhdnN6eGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwODYzNDIsImV4cCI6MjA3OTY2MjM0Mn0.ntlEFLcjB4oFLwHlm-c36j4osLhW5u9zgmapXnTR_ow';
+const supabaseUrl = 'YOUR_SUPABASE_URL';
+const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
 const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-/* ---------- USERS ---------- */
-let users = [
-  {username:"Admin", password:"AB4826"},
-  {username:"Dave", password:"Quality"}
-];
-
 /* ---------- NAV & AUTH ---------- */
-function login(){
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  const found = users.find(x => x.username === u && x.password === p);
-  if(found){
-    localStorage.setItem('currentUser', u);
-    showAddEntry();
-  } else {
-    alert('Invalid credentials.');
-  }
-}
-
 function hideAll(){ ['loginPage','addEntryPage'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
 function showAddEntry(){ hideAll(); document.getElementById('addEntryPage').classList.remove('hidden'); }
+
+/* ---------- LOGIN ---------- */
+async function login() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if(!email || !password) return alert('Fill all fields');
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error) { alert('Login failed: ' + error.message); return; }
+  localStorage.setItem('currentUser', email);
+  showAddEntry();
+}
+
+document.getElementById('loginBtn').addEventListener('click', login);
 
 /* ---------- PHOTO HANDLING ---------- */
 const photoInputs = ['photo1','photo2','photo3'];
@@ -95,50 +90,46 @@ photoInputs.forEach(id => {
   });
 });
 
-/* ---------- SAVE ENTRY TO SUPABASE ---------- */
-async function sendEntry() {
+/* ---------- SAVE ENTRY ---------- */
+async function saveEntry() {
   const prodOrder = document.getElementById('prodOrder').value.trim();
   const drNumber = document.getElementById('drNumber').value.trim();
+  const user = localStorage.getItem('currentUser');
   if(!prodOrder || !drNumber) return alert('Fill all fields');
   if(photoFiles.length < 3) return alert('Select at least 3 photos');
 
-  // Convert photos to base64
-  const photosBase64 = await Promise.all(photoFiles.map(file => {
-    return new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = () => resolve({name: file.name, data: reader.result});
-      reader.readAsDataURL(file);
-    });
-  }));
-
-  const user = localStorage.getItem('currentUser') || 'Unknown';
-
-  const { data, error } = await supabase
-    .from('records')
-    .insert([{ prodOrder, drNumber, user, photos: photosBase64, created_at: new Date() }]);
-
-  if(error){
-    console.error(error);
-    alert('Failed to save entry');
-  } else {
-    alert('Entry saved successfully!');
-    document.getElementById('prodOrder').value='';
-    document.getElementById('drNumber').value='';
-    photoFiles = [];
-    document.getElementById('photoPreview').innerHTML='';
+  // upload photos to Supabase Storage
+  let photoUrls = [];
+  for(let file of photoFiles){
+    const path = `photos/${Date.now()}-${file.name}`;
+    const { data, error } = await supabase.storage.from('production-photos').upload(path, file);
+    if(error) { console.error(error); alert('Failed to upload photos'); return; }
+    const { data: urlData } = supabase.storage.from('production-photos').getPublicUrl(path);
+    photoUrls.push(urlData.publicUrl);
   }
+
+  // insert record
+  const { data, error } = await supabase.from('records').insert([{ prodOrder, drNumber, user, photos: photoUrls, created_at: new Date() }]);
+  if(error){ console.error(error); alert('Failed to save entry'); return; }
+
+  alert('Entry saved successfully!');
+  document.getElementById('prodOrder').value='';
+  document.getElementById('drNumber').value='';
+  photoFiles=[];
+  document.getElementById('photoPreview').innerHTML='';
 }
 
-/* ---------- BUTTONS ---------- */
-document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('sendEmailBtn').addEventListener('click', sendEntry);
+document.getElementById('sendEntryBtn').addEventListener('click', saveEntry);
+
+/* ---------- LOGOUT ---------- */
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  supabase.auth.signOut();
   localStorage.removeItem('currentUser');
   hideAll();
   document.getElementById('loginPage').classList.remove('hidden');
   document.getElementById('prodOrder').value='';
   document.getElementById('drNumber').value='';
-  photoFiles = [];
+  photoFiles=[];
   document.getElementById('photoPreview').innerHTML='';
 });
 
