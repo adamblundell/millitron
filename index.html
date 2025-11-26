@@ -17,18 +17,12 @@ button { cursor:pointer; }
 .hidden { display:none; }
 .small-muted { font-size:12px; color:#666; text-align:center; margin-top:6px; }
 </style>
-
-<!-- EmailJS SDK -->
-<script src="https://cdn.emailjs.com/sdk/3.14.0/email.min.js"></script>
-<script>
-emailjs.init('GM8geKKfTUv87uZu3'); // your public key
-</script>
 </head>
 <body>
 
 <!-- Login Page -->
 <div id="loginPage" class="center">
-  <h1>Millitron Quality v5</h1>
+  <h1>Millitron Quality</h1>
   <input type="text" id="loginUser" placeholder="Username">
   <input type="password" id="loginPass" placeholder="Password">
   <div class="row">
@@ -50,7 +44,7 @@ emailjs.init('GM8geKKfTUv87uZu3'); // your public key
     <div class="small-muted">Tip: after selecting each photo, wait a moment for preview.</div>
   </div>
   <div class="row">
-    <button id="sendEmailBtn">Send Entry via Email</button>
+    <button id="sendEmailBtn" disabled>Send Entry via Email</button>
     <button id="logoutBtn">Logout</button>
     <button id="userMgmtBtn" class="hidden">User Management</button>
   </div>
@@ -159,12 +153,33 @@ photoInputs.forEach(id => {
   });
 });
 
-// ---------- SEND EMAIL WITH ATTACHMENTS ----------
+// ---------- DYNAMIC EMAILJS LOAD & SEND EMAIL ----------
+function loadEmailJS(callback) {
+  if(typeof emailjs !== 'undefined') {
+    callback();
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = "https://cdn.emailjs.com/sdk/3.14.0/email.min.js";
+  script.onload = function() {
+    emailjs.init('GM8geKKfTUv87uZu3');
+    document.getElementById('sendEmailBtn').disabled = false;
+    callback();
+  };
+  script.onerror = function() { alert('Failed to load EmailJS SDK'); };
+  document.head.appendChild(script);
+}
+
 function sendEmail() {
+  if(typeof emailjs === 'undefined') {
+    alert('EmailJS not loaded yet. Please wait a moment.');
+    return;
+  }
   const prodOrder = document.getElementById('prodOrder').value.trim();
   const drNumber = document.getElementById('drNumber').value.trim();
   if(!prodOrder || !drNumber) return alert('Fill all fields');
   if(photoFiles.length < 3) return alert('Select at least 3 photos');
+
   const currentUser = localStorage.getItem('currentUser') || 'Unknown';
 
   const attachmentsPromises = photoFiles.map(file => new Promise((resolve, reject) => {
@@ -184,7 +199,7 @@ function sendEmail() {
       user: currentUser,
       attachments: attachments
     };
-    emailjs.send('service_l486r2y','template_z9ceflo',templateParams)
+    emailjs.send('service_l486r2y','template_z9ceflo', templateParams)
       .then(response => {
         alert('Email sent successfully!');
         document.getElementById('prodOrder').value='';
@@ -198,7 +213,7 @@ function sendEmail() {
 
 // ---------- BUTTONS ----------
 document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
+document.getElementById('sendEmailBtn').addEventListener('click', ()=>loadEmailJS(sendEmail));
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   localStorage.removeItem('currentUser');
   hideAll();
