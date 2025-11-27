@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Millitron Production Entry via silent forms</title>
+<title>Millitron Production Entr via silent form v2y</title>
 <style>
   body { font-family: sans-serif; background: #f5f5f5; padding: 20px; }
   h2 { text-align: center; }
@@ -12,19 +12,24 @@
   input, button { width: 100%; padding: 10px; margin-top: 5px; font-size: 16px; box-sizing: border-box; }
   button { background: #007bff; color: #fff; border: none; cursor: pointer; border-radius: 4px; margin-top: 20px; }
   button:hover { background: #0056b3; }
+  .photos-preview { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .photos-preview img { max-width: 100px; max-height: 100px; border: 1px solid #ccc; border-radius: 4px; }
 </style>
 </head>
 <body>
 
-<h2>Millitron Production Entry via silent forms</h2>
+<h2>Millitron Production Entry</h2>
 
 <form 
   action="https://silentforms.com/api/submit" 
   method="POST" 
   enctype="multipart/form-data"
 >
-  <!-- Your SilentForms access key -->
+  <!-- SilentForms access key -->
   <input type="hidden" name="accessKey" value="28cac7f3bb8842a80835de3ebd378075fe45fc31dc065de6c71ed91d31405e73">
+  
+  <!-- Email required by SilentForms -->
+  <input type="hidden" name="email" value="adam.blundell@milliken.com">
 
   <label>Production Order:</label>
   <input type="text" name="production_order" required>
@@ -41,12 +46,32 @@
   <label>Upload Photo 3:</label>
   <input type="file" name="attachment3" accept="image/*">
 
+  <div class="photos-preview" id="photoPreview"></div>
+
   <button type="submit">Send Entry</button>
 </form>
 
+<script>
+  // Optional: preview uploaded photos
+  const photoInputs = ['attachment1','attachment2','attachment3'];
+  const previewContainer = document.getElementById('photoPreview');
+
+  photoInputs.forEach(id => {
+    const input = document.querySelector(`input[name="${id}"]`);
+    input.addEventListener('change', e => {
+      previewContainer.innerHTML = '';
+      Array.from(photoInputs).forEach(pid => {
+        const fileInput = document.querySelector(`input[name="${pid}"]`);
+        if(fileInput.files[0]){
+          const url = URL.createObjectURL(fileInput.files[0]);
+          const img = document.createElement('img');
+          img.src = url;
+          previewContainer.appendChild(img);
+        }
+      });
+    });
+  });
+</script>
+
 </body>
 </html>
-
-
-
-
