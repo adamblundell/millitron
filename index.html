@@ -1,223 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Millitron Quality - Email Entry</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Millitron Production Entry</title>
 <style>
-body { font-family: sans-serif; margin:0; padding:20px; background:#f5f5f5; }
-h1,h2 { text-align:center; }
-input, button { font-size:18px; padding:10px; margin:5px; width:90%; max-width:300px; box-sizing:border-box; }
-button { cursor:pointer; }
-.center { display:flex; justify-content:center; align-items:center; flex-direction:column; }
-.row { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:10px 0; }
-.photos { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px 0; }
-.photos img { max-width:120px; cursor:pointer; border:1px solid #ccc; }
-.list-entry { display:flex; flex-direction:column; align-items:center; margin-bottom:15px; width:100%; max-width:300px; }
-.hidden { display:none; }
-.small-muted { font-size:12px; color:#666; text-align:center; margin-top:6px; }
+  body { font-family: sans-serif; margin:0; padding:20px; background:#f5f5f5; }
+  h2 { text-align:center; }
+  form { max-width:500px; margin:auto; background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+  label { display:block; margin-top:15px; }
+  input, textarea, button { width:100%; padding:10px; margin-top:5px; font-size:16px; box-sizing:border-box; }
+  button { background:#007bff; color:#fff; border:none; cursor:pointer; border-radius:4px; margin-top:20px; }
+  button:hover { background:#0056b3; }
 </style>
 </head>
 <body>
 
-<!-- Login Page -->
-<div id="loginPage" class="center">
-  <h1>Millitron Qualit    vsdvsvsvsvy</h1>
-  <input type="text" id="loginUser" placeholder="Username">
-  <input type="password" id="loginPass" placeholder="Password">
-  <div class="row">
-    <button id="loginBtn">Login</button>
-  </div>
-</div>
+<h2>Millitron Production Entry</h2>
 
-<!-- Add Entry Page -->
-<div id="addEntryPage" class="center hidden">
-  <h2>Add Production Entry</h2>
-  <div class="list-entry"><label>Production Order:</label><input type="text" id="prodOrder"></div>
-  <div class="list-entry"><label>DR Number:</label><input type="text" id="drNumber"></div>
-  <div class="list-entry">
-    <label>Photos (3+):</label>
-    <input type="file" id="photos" accept="image/*" multiple>
-    <div class="photos" id="photoPreview"></div>
-    <div class="small-muted">Tip: select all photos at once.</div>
-  </div>
-  <div class="row">
-    <button id="sendEmailBtn">Send Entry via Email</button>
-    <button id="logoutBtn">Logout</button>
-    <button id="userMgmtBtn" class="hidden">User Management</button>
-  </div>
-</div>
+<form 
+  action="https://formsubmit.co/adam.blundell@milliken.com"
+  method="POST"
+  enctype="multipart/form-data"
+>
 
-<!-- User Management Page -->
-<div id="userMgmtPage" class="center hidden">
-  <h2>User Management</h2>
-  <div id="userList"></div>
-  <div class="list-entry">
-    <label>New Username:</label>
-    <input type="text" id="newUsername">
-    <label>New Password:</label>
-    <input type="text" id="newPassword">
-    <button id="addUserBtn">Add User</button>
-  </div>
-  <div class="row">
-    <button id="backBtn">Back</button>
-  </div>
-</div>
+    <label>Production Order:</label>
+    <input type="text" name="production_order" required>
 
-<script type="module">
-import emailjs from 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
-emailjs.init('GM8geKKfTUv87uZu3'); // Your public key
+    <label>DR Number:</label>
+    <input type="text" name="dr_number" required>
 
-// ---------- USERS ----------
-function getDefaultUsers() {
-  return [
-    {username:"Admin", password:"AB4826"},
-    {username:"Dave", password:"Quality"}
-  ];
-}
+    <label>Upload Photo 1 (required):</label>
+    <input type="file" name="attachment1" accept="image/*" required>
 
-let users;
-function saveUsers() { localStorage.setItem('users', JSON.stringify(users)); }
+    <label>Upload Photo 2:</label>
+    <input type="file" name="attachment2" accept="image/*">
 
-try {
-  const stored = JSON.parse(localStorage.getItem('users'));
-  if (!Array.isArray(stored) || stored.length === 0 || !stored.find(u => u.username === 'Admin')) {
-    users = getDefaultUsers();
-    saveUsers();
-  } else {
-    users = stored;
-  }
-} catch(e) {
-  users = getDefaultUsers();
-  saveUsers();
-}
+    <label>Upload Photo 3:</label>
+    <input type="file" name="attachment3" accept="image/*">
 
-// ---------- NAV & AUTH ----------
-function login(){
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  const found = users.find(x => x.username === u && x.password === p);
-  if(found){
-    localStorage.setItem('currentUser', u);
-    showAddEntry();
-    if(u === "Admin") document.getElementById('userMgmtBtn').classList.remove('hidden');
-  } else alert('Invalid credentials.');
-}
-function hideAll(){ ['loginPage','addEntryPage','userMgmtPage'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
-function showAddEntry(){ hideAll(); document.getElementById('addEntryPage').classList.remove('hidden'); }
+    <!-- FormSubmit options -->
+    <input type="hidden" name="_subject" value="New Production Entry">
+    <input type="hidden" name="_captcha" value="false">
 
-// ---------- USER MANAGEMENT ----------
-function showUserMgmt() {
-  hideAll();
-  document.getElementById('userMgmtPage').classList.remove('hidden');
-  renderUserList();
-}
-function renderUserList() {
-  const container = document.getElementById('userList');
-  container.innerHTML = '';
-  users.forEach((u, i) => {
-    const div = document.createElement('div');
-    div.className = 'list-entry';
-    div.innerHTML = `<span><strong>${u.username}</strong>: ${u.password}</span>
-      <button onclick="editUser(${i})">Edit</button>
-      <button onclick="deleteUser(${i})">Delete</button>`;
-    container.appendChild(div);
-  });
-}
-function addUser() {
-  const newU = document.getElementById('newUsername').value.trim();
-  const newP = document.getElementById('newPassword').value.trim();
-  if(!newU || !newP) return alert('Enter username and password');
-  if(users.find(x => x.username === newU)) return alert('Username already exists');
-  users.push({username:newU, password:newP});
-  saveUsers();
-  renderUserList();
-  document.getElementById('newUsername').value='';
-  document.getElementById('newPassword').value='';
-}
-window.editUser = function(index) {
-  const newPass = prompt('Enter new password for ' + users[index].username, users[index].password);
-  if(newPass !== null && newPass.trim() !== '') {
-    users[index].password = newPass.trim();
-    saveUsers();
-    renderUserList();
-  }
-}
-window.deleteUser = function(index) {
-  if(users[index].username === 'Admin') return alert('Cannot delete Admin');
-  if(confirm(`Delete user ${users[index].username}?`)) {
-    users.splice(index,1);
-    saveUsers();
-    renderUserList();
-  }
-}
+    <button type="submit">Send Entry</button>
+</form>
 
-// ---------- PHOTO HANDLING ----------
-const photoInput = document.getElementById('photos');
-let photoFiles = [];
-photoInput.addEventListener('change', e => {
-  photoFiles = Array.from(e.target.files);
-  const preview = document.getElementById('photoPreview');
-  preview.innerHTML = '';
-  photoFiles.forEach(file => {
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(file);
-    img.addEventListener('click', () => window.open(img.src));
-    preview.appendChild(img);
-  });
-});
-
-// ---------- SEND EMAIL ----------
-async function sendEmail() {
-  const prodOrder = document.getElementById('prodOrder').value.trim();
-  const drNumber = document.getElementById('drNumber').value.trim();
-  if(!prodOrder || !drNumber) return alert('Fill all fields');
-  if(photoFiles.length < 3) return alert('Select at least 3 photos');
-
-  const currentUser = localStorage.getItem('currentUser') || 'Unknown';
-
-  const attachments = await Promise.all(photoFiles.map(file => new Promise((resolve,reject)=>{
-    const reader = new FileReader();
-    reader.onload = () => resolve({ name: file.name, data: reader.result.split(',')[1] });
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  })));
-
-  const templateParams = { prodOrder, drNumber, user: currentUser, attachments };
-
-  emailjs.send('service_l486r2y', 'template_z9ceflo', templateParams)
-    .then(()=> {
-      alert('Email sent successfully!');
-      document.getElementById('prodOrder').value='';
-      document.getElementById('drNumber').value='';
-      photoFiles=[];
-      document.getElementById('photoPreview').innerHTML='';
-    })
-    .catch(err=> alert('Failed: '+JSON.stringify(err)));
-}
-
-// ---------- BUTTONS ----------
-document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  localStorage.removeItem('currentUser');
-  hideAll();
-  document.getElementById('loginPage').classList.remove('hidden');
-  document.getElementById('prodOrder').value='';
-  document.getElementById('drNumber').value='';
-  photoFiles=[];
-  document.getElementById('photoPreview').innerHTML='';
-  document.getElementById('userMgmtBtn').classList.add('hidden');
-});
-document.getElementById('userMgmtBtn').addEventListener('click', showUserMgmt);
-document.getElementById('backBtn').addEventListener('click', showAddEntry);
-document.getElementById('addUserBtn').addEventListener('click', addUser);
-
-// ---------- INIT ----------
-hideAll();
-document.getElementById('loginPage').classList.remove('hidden');
-saveUsers();
-
-</script>
 </body>
 </html>
